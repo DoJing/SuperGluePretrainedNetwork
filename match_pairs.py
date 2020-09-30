@@ -68,13 +68,13 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
-        '--input_pairs', type=str, default='assets/scannet_sample_pairs_with_gt.txt',
+        '--input_pairs', type=str, default='pairs.txt',
         help='Path to the list of image pairs')
     parser.add_argument(
-        '--input_dir', type=str, default='assets/scannet_sample_images/',
+        '--input_dir', type=str, default='/home/dojing/fuwuqi/yizi/',
         help='Path to the directory that contains the images')
     parser.add_argument(
-        '--output_dir', type=str, default='dump_match_pairs/',
+        '--output_dir', type=str, default='dump_match_pairs0/',
         help='Path to the directory in which the .npz results and optionally,'
              'the visualization images are written')
 
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         '--max_length', type=int, default=-1,
         help='Maximum number of pairs to evaluate')
     parser.add_argument(
-        '--resize', type=int, nargs='+', default=[640, 480],
+        '--resize', type=int, nargs='+', default=[-1, -1],
         help='Resize the input image before running inference. If two numbers, '
              'resize to the exact dimensions, if one number, resize the max '
              'dimension, if -1, do not resize')
@@ -94,11 +94,11 @@ if __name__ == '__main__':
         '--superglue', choices={'indoor', 'outdoor'}, default='indoor',
         help='SuperGlue weights')
     parser.add_argument(
-        '--max_keypoints', type=int, default=1024,
+        '--max_keypoints', type=int, default=20000,
         help='Maximum number of keypoints detected by Superpoint'
              ' (\'-1\' keeps all keypoints)')
     parser.add_argument(
-        '--keypoint_threshold', type=float, default=0.005,
+        '--keypoint_threshold', type=float, default=0.00005,
         help='SuperPoint keypoint detector confidence threshold')
     parser.add_argument(
         '--nms_radius', type=int, default=4,
@@ -108,18 +108,18 @@ if __name__ == '__main__':
         '--sinkhorn_iterations', type=int, default=20,
         help='Number of Sinkhorn iterations performed by SuperGlue')
     parser.add_argument(
-        '--match_threshold', type=float, default=0.2,
+        '--match_threshold', type=float, default=0.02,
         help='SuperGlue match threshold')
 
     parser.add_argument(
-        '--viz', action='store_true',
+        '--viz', action='store_true',default="true",
         help='Visualize the matches and dump the plots')
     parser.add_argument(
         '--eval', action='store_true',
         help='Perform the evaluation'
              ' (requires ground truth pose and intrinsics)')
     parser.add_argument(
-        '--fast_viz', action='store_true',
+        '--fast_viz', action='store_true',default="true",
         help='Use faster image visualization with OpenCV instead of Matplotlib')
     parser.add_argument(
         '--cache', action='store_true',
@@ -131,7 +131,7 @@ if __name__ == '__main__':
         '--viz_extension', type=str, default='png', choices=['png', 'pdf'],
         help='Visualization file extension. Use pdf for highest-quality.')
     parser.add_argument(
-        '--opencv_display', action='store_true',
+        '--opencv_display', action='store_true',default="true",
         help='Visualize via OpenCV before saving output images')
     parser.add_argument(
         '--shuffle', action='store_true',
@@ -280,7 +280,8 @@ if __name__ == '__main__':
             # Write the matches to disk.
             out_matches = {'keypoints0': kpts0, 'keypoints1': kpts1,
                            'matches': matches, 'match_confidence': conf}
-            np.savez(str(matches_path), **out_matches)
+            print("kpt num : ", kpts1.shape[0], kpts0.shape[0],matches.shape[0])
+            #np.savez(str(matches_path), **out_matches)
 
         # Keep the matching keypoints.
         valid = matches > -1

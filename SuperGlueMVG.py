@@ -32,6 +32,23 @@ def save_mvg_matches(matches,save_file):
             for v in matches[key]:
                 file.writelines(str(v[0])+' '+str(v[1])+'\n')
         file.close()
+def subpixel(response, keypoints, radius:'int > 0'):
+    x_template = np.zeros((radius * 2 + 1, radius * 2 + 1))
+    y_template = np.zeros((radius * 2 + 1, radius * 2 + 1))
+    keypoints_subpixel=keypoints
+    for i in range(radius * 2 + 1):
+        x_template[:, i] = i - radius
+        y_template[i, :] = i - radius
+    for id in range(len(keypoints)):
+        pt = keypoints[id].astype(np.int)
+        w = response[pt[1]-radius:pt[1]+radius+1, pt[0]-radius:pt[0]+radius+1]
+        wx = np.sum(np.multiply(w, x_template))
+        x_bias = wx / np.sum(w)
+        wy = np.sum(np.multiply(w, y_template))
+        y_bias = wy / np.sum(w)
+        keypoints_subpixel[id][0] += x_bias
+        keypoints_subpixel[id][1] += y_bias
+    return keypoints_subpixel
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Image pair matching and pose evaluation with SuperGlue',
@@ -132,6 +149,7 @@ if __name__ == '__main__':
               'directory \"{}\"'.format(output_dir))
     image_tensor = {}
     keypoints_tensor = {}
+    response = {}
     matches_mvg = {}
     timer = AverageTimer(newline=True)
     for i, pair in enumerate(pairs):
@@ -162,9 +180,11 @@ if __name__ == '__main__':
         if id0 not in keypoints_tensor.keys():
             pred0 = superpoint({'image': image_tensor[id0]})
             keypoints_tensor[id0] = pred0
+            response[id0] = pred0['response'].cpu().numpy()
         if id1 not in keypoints_tensor.keys():
             pred1 = superpoint({'image': image_tensor[id1]})
             keypoints_tensor[id1] = pred1
+            response[id1] = pred1['response'].cpu().numpy()
         if keypoints_tensor[id0] is None or keypoints_tensor[id1] is None:
             print('Problem extract feature pair: {} {}'.format(
                 input_dir/name0, input_dir/name1))
@@ -174,6 +194,8 @@ if __name__ == '__main__':
         pred = matching({'image0': image_tensor[id0], 'image1': image_tensor[id1],'keypoints0':keypoints_tensor[id0],'keypoints1':keypoints_tensor[id1]})
         pred = {k: v[0].cpu().numpy() for k, v in pred.items()}
         kpts0, kpts1 = pred['keypoints0'], pred['keypoints1']
+        kpts0 = subpixel(response[id0], kpts0, opt.nms_radius)
+        kpts1 = subpixel(response[id1], kpts1, opt.nms_radius)
         matches, conf = pred['matches0'], pred['matching_scores0']
         timer.update('matcher')
         save_mvg_points(kpts0, str(output_dir / name0)[:-4] + '.feat')
@@ -183,7 +205,7 @@ if __name__ == '__main__':
         index1 = matches[index0]
         if len(index0) < min(len(kpts0),len(kpts1))*0.2:
             continue
-        cur_match=[]
+        cur_match = []
         for r, t in zip(index0, index1):
             cur_match.append((r, t))
         matches_mvg[(id0, id1)] = cur_match

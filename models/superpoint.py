@@ -164,6 +164,7 @@ class SuperPoint(nn.Module):
         b, _, h, w = scores.shape
         scores = scores.permute(0, 2, 3, 1).reshape(b, h, w, 8, 8)
         scores = scores.permute(0, 1, 3, 2, 4).reshape(b, h*8, w*8)
+        response = scores
         scores = simple_nms(scores, self.config['nms_radius'])
 
         # Extract keypoints
@@ -198,5 +199,6 @@ class SuperPoint(nn.Module):
         return {
             'keypoints': keypoints,
             'scores': scores,
+            'response': torch.squeeze(response),
             'descriptors': descriptors,
         }
